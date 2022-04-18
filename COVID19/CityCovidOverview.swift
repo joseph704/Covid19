@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct CityCovidOverivew: Codable {
+struct CityCovidOverView: Codable {
     let korea: CovidOverview
     let seoul: CovidOverview
     let busan: CovidOverview
@@ -26,6 +26,10 @@ struct CityCovidOverivew: Codable {
     let gyeongbuk: CovidOverview
     let gyeongnam: CovidOverview
     let jeju: CovidOverview
+    
+    func getAllCases() -> [CovidOverview] {
+        return [korea, seoul, busan, daegu, incheon, gwangju, daejeon, ulsan, sejong, gyeonggi, gangwon, chungbuk, chungnam, jeonbuk, jeonnam, gyeongbuk,gyeongnam, jeju]
+    }
 }
 
 struct CovidOverview: Codable {

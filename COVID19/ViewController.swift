@@ -16,20 +16,66 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // 순환 참조 방지
-        self.fetchCovidOverView(completionHandler: { [weak self] result in
-            guard self != nil else { return }
+        self.fetchCovidOverView(completionHandler: { [weak self] result in // 순환 참조 방지
+            guard let self = self else { return }
             switch result {
             case let .success(value):
-                debugPrint("success \(value)")
+                self.configureStackView(koreaCovidOverview: value.korea)
+                let covidOverviewList = self.makeCovidOverviewList(cityCovidOverview: value)
+                self.configureChartView(covidoverViewList: covidOverviewList)
             case let .failure(error):
                 debugPrint("error \(error)")
             }
         })
     }
     
+    func makeCovidOverviewList(
+        cityCovidOverview: CityCovidOverView
+    ) -> [CovidOverview] {
+        return cityCovidOverview.getAllCases()
+    }
+    
+    func configureChartView(covidoverViewList: [CovidOverview]) {
+        let entries = covidoverViewList.compactMap { [weak self] overview -> PieChartDataEntry? in
+            guard let self = self else { return nil }
+            return PieChartDataEntry(
+                value: self.removeFormatString(string: overview.newCase),
+                label: overview.countryName,
+                data: overview
+            )
+        }
+        let dataSet = PieChartDataSet(entries: entries, label: "코로나 발생 현황")
+        dataSet.sliceSpace = 1
+        dataSet.entryLabelColor = .black
+        dataSet.valueTextColor = .black
+        dataSet.xValuePosition = .outsideSlice
+        dataSet.valueLinePart1OffsetPercentage = 0.8
+        dataSet.valueLinePart1Length = 0.2
+        dataSet.valueLinePart2Length = 0.3
+        
+        dataSet.colors = ChartColorTemplates.vordiplom() +
+        ChartColorTemplates.joyful() +
+        ChartColorTemplates.liberty() +
+        ChartColorTemplates.pastel() +
+        ChartColorTemplates.material()
+        
+        self.pieChartView.data = PieChartData(dataSet: dataSet)
+        self.pieChartView.spin(duration: 0.3, fromAngle: self.pieChartView.rotationAngle, toAngle: self.pieChartView.rotationAngle + 80)
+    }
+    
+    func removeFormatString(string: String) -> Double {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.number(from: string)?.doubleValue ?? 0
+    }
+    
+    func configureStackView(koreaCovidOverview: CovidOverview) {
+        self.totalCaseLabel.text = "\(koreaCovidOverview.totalCase)명"
+        self.newCaseLabel.text = "\(koreaCovidOverview.newCase)명"
+    }
+    
     func fetchCovidOverView (
-        completionHandler: @escaping (Result<CityCovidOverivew, Error>) -> Void
+        completionHandler: @escaping (Result<CityCovidOverView, Error>) -> Void
     ) {
         let url = "https://api.corona-19.kr/korea/country/new/"
         let param = [
@@ -42,7 +88,7 @@ class ViewController: UIViewController {
                 case let .success(data):
                     do {
                         let decoder = JSONDecoder()
-                        let result = try decoder.decode(CityCovidOverivew.self, from: data)
+                        let result = try decoder.decode(CityCovidOverView.self, from: data)
                         completionHandler(.success(result))
                     } catch {
                         completionHandler(.failure(error))
