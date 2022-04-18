@@ -13,11 +13,18 @@ class ViewController: UIViewController {
     @IBOutlet weak var totalCaseLabel: UILabel!
     @IBOutlet weak var newCaseLabel: UILabel!
     @IBOutlet weak var pieChartView: PieChartView!
+    @IBOutlet weak var labelStackView: UIStackView!
+    @IBOutlet weak var indicatorView: UIActivityIndicatorView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.indicatorView.startAnimating()
         self.fetchCovidOverView(completionHandler: { [weak self] result in // 순환 참조 방지
             guard let self = self else { return }
+            self.indicatorView.stopAnimating()
+            self.indicatorView.isHidden = true
+            self.labelStackView.isHidden = false
+            self.pieChartView.isHidden = false
             switch result {
             case let .success(value):
                 self.configureStackView(koreaCovidOverview: value.korea)
@@ -36,6 +43,7 @@ class ViewController: UIViewController {
     }
     
     func configureChartView(covidoverViewList: [CovidOverview]) {
+        self.pieChartView.delegate = self
         let entries = covidoverViewList.compactMap { [weak self] overview -> PieChartDataEntry? in
             guard let self = self else { return nil }
             return PieChartDataEntry(
@@ -97,5 +105,14 @@ class ViewController: UIViewController {
                     completionHandler(.failure(error))
                 }
             })
+    }
+}
+
+extension ViewController: ChartViewDelegate {
+    func chartValueSelected(_ chartView: ChartViewBase, entry: ChartDataEntry, highlight: Highlight) {
+        guard let covidDetailViewController = self.storyboard?.instantiateViewController(withIdentifier: "CovidDetailViewController") as? CovidDetailViewController else { return }
+        guard let covidOverview = entry.data as? CovidOverview else { return }
+        covidDetailViewController.covidOverview = covidOverview
+        self.navigationController?.pushViewController(covidDetailViewController, animated: true)
     }
 }
